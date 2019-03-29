@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 
 namespace TruffleSnuffle
 {
@@ -11,6 +12,8 @@ namespace TruffleSnuffle
     {
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
+
+        Camera gameCamera = new Camera();
 
         // Game Objects
         GameObject player = new GameObject();
@@ -40,6 +43,16 @@ namespace TruffleSnuffle
             // Set up GameObjects
             truffle.position.X = 200f;
             truffle.rotation.X = 0.2f;
+            truffle.scale = new Vector3(3f);
+            truffle.collisionScale = new Vector3(100f);
+            player.collisionScale = new Vector3(100f);
+
+            // Game camera setup
+            gameCamera.offset = new Vector3(0f, 200f, -800f);
+            gameCamera.target = player.position;
+
+            // Debug setup
+            BoundingRenderer.InitializeGraphics(graphics.GraphicsDevice);
 
             base.Initialize();
         }
@@ -86,6 +99,37 @@ namespace TruffleSnuffle
             // (really this should be scaled based on gameTime)
             truffle.rotation.Y += 0.1f;
 
+            
+            // ------------------------------
+            // INPUT
+            // ------------------------------
+
+            // Rotate left / right
+            if (Keyboard.GetState().IsKeyDown(Keys.Left))
+                player.rotation.Y += 0.1f;
+            if (Keyboard.GetState().IsKeyDown(Keys.Right))
+                player.rotation.Y -= 0.1f;
+
+            // Move forward
+            if (Keyboard.GetState().IsKeyDown(Keys.Up))
+            {
+                player.acceleration.X = (float)Math.Sin(player.rotation.Y) * 1000f;
+                player.acceleration.Z = (float)Math.Cos(player.rotation.Y) * 1000f;
+            }
+            else
+            {
+                player.acceleration = Vector3.Zero;
+            }
+
+            // ------------------------------
+            // UPDATE GAME OBJECTS
+            // ------------------------------
+            player.Update(gameTime);
+            truffle.Update(gameTime);
+
+            gameCamera.target = player.position;
+
+
             base.Update(gameTime);
         }
 
@@ -100,8 +144,8 @@ namespace TruffleSnuffle
             // TODO: Add your drawing code here
 
             // Draw GameObjects
-            player.Draw();
-            truffle.Draw();
+            player.Draw(gameCamera);
+            truffle.Draw(gameCamera);
 
             base.Draw(gameTime);
         }

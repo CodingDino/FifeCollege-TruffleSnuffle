@@ -14,6 +14,12 @@ namespace TruffleSnuffle
         // Transform data
         public Vector3 position = Vector3.Zero;
         public Vector3 rotation = Vector3.Zero;
+        public Vector3 scale = Vector3.One;
+
+        // Physics
+        public Vector3 velocity = Vector3.Zero;
+        public Vector3 acceleration = Vector3.Zero;
+        public Vector3 collisionScale = Vector3.One;
 
 
         // Function to load our model in from file
@@ -28,7 +34,7 @@ namespace TruffleSnuffle
         }
 
         // Draws the model to the screen
-        public void Draw()
+        public void Draw(Camera camera)
         {
             // Loop through the meshes in the 3D model, drawing each one in turn
             foreach (ModelMesh mesh in model.Meshes)
@@ -51,7 +57,10 @@ namespace TruffleSnuffle
                     // ------------------------------
                     // Transform from model space to world space in order - scale, rotation, translation.
 
-                    // 1. Scale (TODO)
+                    // 1. Scale
+                    // Scale our model by multiplying the world matrix by a scale matrix
+                    // XNA does this for use using CreateScale()
+                    effect.World *= Matrix.CreateScale(scale);
 
                     // 2. Rotation
                     // Rotate our model in the game world
@@ -68,8 +77,8 @@ namespace TruffleSnuffle
                     // ------------------------------
                     // This puts the model in relation to where our camera is, and the direction of our camera.
                     effect.View = Matrix.CreateLookAt(
-                        new Vector3(0f, 300f, -400f),
-                        Vector3.Zero,
+                        camera.target + camera.offset,
+                        camera.target,
                         Vector3.Up
                         );
 
@@ -82,10 +91,10 @@ namespace TruffleSnuffle
 
                     // Perspective
                     effect.Projection = Matrix.CreatePerspectiveFieldOfView(
-                        MathHelper.ToRadians(45f),
-                        16f / 9f,
-                        1f,
-                        10000f);
+                        camera.FOV,
+                        camera.aspectRatio,
+                        camera.nearPlane,
+                        camera.farPlane);
 
                     // Orthographic
                     //effect.Projection = Matrix.CreateOrthographic(
@@ -105,8 +114,55 @@ namespace TruffleSnuffle
                 // Draw the current mesh using the effects we set up
                 mesh.Draw();
             }
+
+            Matrix view = Matrix.CreateLookAt(
+                        camera.target + camera.offset,
+                        camera.target,
+                        Vector3.Up
+                        );
+
+            Matrix projection = Matrix.CreatePerspectiveFieldOfView(
+                        camera.FOV,
+                        camera.aspectRatio,
+                        camera.nearPlane,
+                        camera.farPlane);
+
+            BoundingRenderer.RenderSphere(GetBoundingSphere(), view, projection, Color.Gray);
+
         }
 
+        public void Update(GameTime gameTime)
+        {
+            // Apply an overall drag ("friction")
+            velocity *= 0.9f;
 
+
+            // Handle acceleration (apply acceleration to velocity)
+            // acceleration = change in velocity over a set period of time (a = dv/dt)
+            // dv = a * dt
+            // new velocity = old velocity + dv = old velocity + acceleration * time passed
+            velocity += acceleration * (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            // Handle velocity (apply velocity to position)
+            // velocity = change in position over a set period of time (v = dp/dt)
+            // dp = v * dt
+            // new position = old positoin + dp = old position + velocity * time passed
+            position += velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        }
+
+        public BoundingSphere GetBoundingSphere()
+        {
+            BoundingSphere bounds = new BoundingSphere();
+
+            // Use the position of our object + the center of the mesh
+            bounds.Center = model.Meshes[0].BoundingSphere.Center + position;
+
+            // Scale our radius based on the model, our gameObject scale, and our collision scale
+            // Just use X scale, as collision spheres are the same in all directions
+            bounds.Radius = model.Meshes[0].BoundingSphere.Radius * scale.X * collisionScale.X;
+
+
+            return bounds;
+        }
     }
 }
