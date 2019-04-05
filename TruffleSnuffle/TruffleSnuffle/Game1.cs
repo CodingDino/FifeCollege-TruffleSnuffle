@@ -44,8 +44,12 @@ namespace TruffleSnuffle
             truffle.position.X = 200f;
             truffle.rotation.X = 0.2f;
             truffle.scale = new Vector3(3f);
-            truffle.collisionScale = new Vector3(100f);
-            player.collisionScale = new Vector3(100f);
+            truffle.collisionScale = new Vector3(50f, 75f, 50f);
+            truffle.collisionOffset = new Vector3(0, 100f, 0);
+            truffle.boundingType = GameObject.BoundingType.BOX;
+            player.collisionScale = new Vector3(75f, 50f, 75f);
+            player.collisionOffset = new Vector3(0, 100f, 0);
+            player.boundingType = GameObject.BoundingType.SPHERE;
 
             // Game camera setup
             gameCamera.offset = new Vector3(0f, 200f, -800f);
@@ -128,6 +132,15 @@ namespace TruffleSnuffle
             truffle.Update(gameTime);
 
             gameCamera.target = player.position;
+
+            // ------------------------------
+            // CHECK FOR COLLISIONS
+            // ------------------------------
+            // Clear the lists because we'll be adding to them again, clear out anything that isn't colliding anymore
+            player.collidingWith.Clear();
+            truffle.collidingWith.Clear();
+            // Check if collision is active
+            player.DetectCollision(truffle);
 
 
             base.Update(gameTime);

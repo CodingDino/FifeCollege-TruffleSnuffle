@@ -1,11 +1,19 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Content;
+using System.Collections.Generic;
 
 namespace TruffleSnuffle
 {
     class GameObject
     {
+        // Enum for different bounding types
+        public enum BoundingType
+        {
+            BOX, 
+            SPHERE
+        }
+
 
         // Model
         public Model model;
@@ -20,7 +28,9 @@ namespace TruffleSnuffle
         public Vector3 velocity = Vector3.Zero;
         public Vector3 acceleration = Vector3.Zero;
         public Vector3 collisionScale = Vector3.One;
-
+        public Vector3 collisionOffset = Vector3.Zero;
+        public List<GameObject> collidingWith = new List<GameObject>();
+        public BoundingType boundingType = BoundingType.BOX;
 
         // Function to load our model in from file
         public void LoadModel(ContentManager content, string name)
@@ -127,7 +137,26 @@ namespace TruffleSnuffle
                         camera.nearPlane,
                         camera.farPlane);
 
-            BoundingRenderer.RenderSphere(GetBoundingSphere(), view, projection, Color.Gray);
+            // Draw the bounds
+            Color boundsColor = Color.Gray;
+            // Change the color if we are colliding with something
+            if (collidingWith.Count > 0)
+            {
+                boundsColor = Color.White;
+            }
+
+            // Render our bounds based on the type
+            switch (boundingType)
+            {
+                case BoundingType.BOX:
+                    BoundingRenderer.RenderBox(GetBoundingBox(), view, projection, boundsColor);
+                    break;
+
+                case BoundingType.SPHERE:
+                    BoundingRenderer.RenderSphere(GetBoundingSphere(), view, projection, boundsColor);
+                    break;
+            }
+
 
         }
 
@@ -155,7 +184,7 @@ namespace TruffleSnuffle
             BoundingSphere bounds = new BoundingSphere();
 
             // Use the position of our object + the center of the mesh
-            bounds.Center = model.Meshes[0].BoundingSphere.Center + position;
+            bounds.Center = model.Meshes[0].BoundingSphere.Center + position + collisionOffset;
 
             // Scale our radius based on the model, our gameObject scale, and our collision scale
             // Just use X scale, as collision spheres are the same in all directions
@@ -164,5 +193,88 @@ namespace TruffleSnuffle
 
             return bounds;
         }
+
+        public BoundingBox GetBoundingBox()
+        {
+            BoundingBox bounds = new BoundingBox();
+
+            // Find the center first, by starting at the model's world position
+            // then adding an offset if the model's center also happens to be offset - scaled by the model's scale.
+            bounds.Min = position + model.Meshes[0].BoundingSphere.Center + collisionOffset;
+
+            // Then move this center to the top left corner by subtracting half the size of the model
+            // Calculated by its radius and scaled by visual and collision scales
+            bounds.Min.X -= (model.Meshes[0].BoundingSphere.Radius) * collisionScale.X * scale.X;
+            bounds.Min.Y -= (model.Meshes[0].BoundingSphere.Radius) * collisionScale.Y * scale.Y;
+            bounds.Min.Z -= (model.Meshes[0].BoundingSphere.Radius) * collisionScale.Z * scale.Z;
+
+            // Find the max (the opposite corner) by adding on the model size, scaled
+            bounds.Max.X = bounds.Min.X + model.Meshes[0].BoundingSphere.Radius * 2 * collisionScale.X * scale.X;
+            bounds.Max.Y = bounds.Min.Y + model.Meshes[0].BoundingSphere.Radius * 2 * collisionScale.Y * scale.Y;
+            bounds.Max.Z = bounds.Min.Z + model.Meshes[0].BoundingSphere.Radius * 2 * collisionScale.Z * scale.Z;
+
+            return bounds;
+        }
+
+        public bool DetectCollision(GameObject otherObject)
+        {
+            bool collided = false;
+
+            // Check if the two bounds collide
+            // Check what kind of bounding WE have
+            switch (boundingType)
+            {
+                case BoundingType.BOX:
+                    // WE are a Box!
+
+                    // Check what kind of bounding THEY have
+                    switch (otherObject.boundingType)
+                    {
+                        case BoundingType.BOX:
+                            // WE are a box, THEY are a box!
+                            collided = GetBoundingBox().Intersects(otherObject.GetBoundingBox());
+                            break;
+
+                        case BoundingType.SPHERE:
+                            // WE are a box, THEY are a sphere!
+                            collided = GetBoundingBox().Intersects(otherObject.GetBoundingSphere());
+                            break;
+                    }
+
+
+                    break;
+
+                case BoundingType.SPHERE:
+                    // WE are a Sphere!
+
+                    // Check what kind of bounding THEY have
+                    switch (otherObject.boundingType)
+                    {
+                        case BoundingType.BOX:
+                            // WE are a Sphere, THEY are a box!
+                            collided = GetBoundingSphere().Intersects(otherObject.GetBoundingBox());
+                            break;
+
+                        case BoundingType.SPHERE:
+                            // WE are a Sphere, THEY are a sphere!
+                            collided = GetBoundingSphere().Intersects(otherObject.GetBoundingSphere());
+                            break;
+                    }
+
+                    break;
+            }
+
+
+
+            // If we collided, add eachother to our collision lists
+            if (collided)
+            {
+                collidingWith.Add(otherObject);
+                otherObject.collidingWith.Add(this);
+            }
+
+            return collided;
+        }
+
     }
 }
