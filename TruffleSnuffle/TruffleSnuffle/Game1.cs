@@ -25,6 +25,10 @@ namespace TruffleSnuffle
         Vector3 startPoint = new Vector3(200f, 0f, 0f);
         Vector3 endPoint = new Vector3(400f, 0f, 0f);
 
+        // Jumping
+        float gravity = -3000f;
+        float jumpSpeed = 1000f;
+        float jumpStart = 0f;
 
         public Game1()
         {
@@ -108,7 +112,7 @@ namespace TruffleSnuffle
 
             // Make the truffle rotate a bit each frame
             // (really this should be scaled based on gameTime)
-            truffle.rotation.Y += 0.1f;
+            //truffle.rotation.Y += 0.1f;
 
             
             // ------------------------------
@@ -132,6 +136,22 @@ namespace TruffleSnuffle
                 player.acceleration = Vector3.Zero;
             }
 
+            // Jump
+            if (Keyboard.GetState().IsKeyDown(Keys.Space) && player.position.Y == 0f)
+            {
+                jumpStart = (float)gameTime.TotalGameTime.TotalSeconds;
+            }
+            if (jumpStart != 0f)
+            {
+                float timeSinceJump = (float)gameTime.TotalGameTime.TotalSeconds - jumpStart;
+                player.position.Y = gravity * timeSinceJump * timeSinceJump / 2f + jumpSpeed * timeSinceJump;
+                if (player.position.Y < 0f)
+                {
+                    player.position.Y = 0f;
+                    jumpStart = 0f;
+                }
+            }
+
 
             // ------------------------------
             // EASING
@@ -147,7 +167,7 @@ namespace TruffleSnuffle
                 startPoint = oldEnd;
                 endPoint = oldStart;
             }
-            truffle.position = QuadEaseOut(secondsPassed, duration, startPoint, endPoint);
+            //truffle.position = QuadEaseOut(secondsPassed, duration, startPoint, endPoint);
 
             // ------------------------------
             // UPDATE GAME OBJECTS
