@@ -19,6 +19,13 @@ namespace TruffleSnuffle
         GameObject player = new GameObject();
         GameObject truffle = new GameObject();
 
+        // Easing Function Example
+        float secondsPassed = 0f;
+        float duration = 3f;
+        Vector3 startPoint = new Vector3(200f, 0f, 0f);
+        Vector3 endPoint = new Vector3(400f, 0f, 0f);
+
+
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
@@ -125,6 +132,23 @@ namespace TruffleSnuffle
                 player.acceleration = Vector3.Zero;
             }
 
+
+            // ------------------------------
+            // EASING
+            // ------------------------------
+            secondsPassed += (float) gameTime.ElapsedGameTime.TotalSeconds;
+            if (secondsPassed >= duration)
+            {
+                // We have finished our animation, 
+                // so restart it in the other direction
+                secondsPassed = 0f;
+                Vector3 oldStart = startPoint;
+                Vector3 oldEnd = endPoint;
+                startPoint = oldEnd;
+                endPoint = oldStart;
+            }
+            truffle.position = QuadEaseOut(secondsPassed, duration, startPoint, endPoint);
+
             // ------------------------------
             // UPDATE GAME OBJECTS
             // ------------------------------
@@ -161,6 +185,35 @@ namespace TruffleSnuffle
             truffle.Draw(gameCamera);
 
             base.Draw(gameTime);
+        }
+
+        // QuadEaseOut easing function
+        // time = seconds passed since start of animation (absolute, not ratio)
+        // duration = how long the animation should take
+        private Vector3 QuadEaseOut(float time, float duration, Vector3 startPoint, Vector3 endPoint)
+        {
+            // Calculate our independant variable time as a proportion (ratio) of time passed to the total duration
+            // (between 0 and 1)
+            float t = time / duration;
+
+            // Calculate p (position aka distance traveled from start)
+            // Using our derived quadratic equation
+            // Produces a fraction of the complete distance (between 0 and 1)
+            // This is our scaling factor
+            float p = -1f * t * t + 2f * t;
+
+            // Determine the total distance to be traveled
+            Vector3 totalDistance = endPoint - startPoint;
+            // endpoint = startPoint + totalDistance
+
+            // Determine the distance traveled (how far we have actually gone so far)
+            // By scaling the total distance by our generated scaling factor (p)
+            Vector3 distanceTraveled = totalDistance * p;
+
+            // Determine the new position by adding the distance traveled to the start point
+            Vector3 newPosition = startPoint + distanceTraveled;
+
+            return newPosition;
         }
     }
 }
