@@ -32,6 +32,11 @@ namespace TruffleSnuffle
         public List<GameObject> collidingWith = new List<GameObject>();
         public BoundingType boundingType = BoundingType.BOX;
 
+        // Previous state
+        protected Vector3 positionPrev;
+        protected Vector3 velocityPrev;
+        protected Vector3 accelerationPrev;
+
         // Function to load our model in from file
         public void LoadModel(ContentManager content, string name)
         {
@@ -162,21 +167,37 @@ namespace TruffleSnuffle
 
         public void Update(GameTime gameTime)
         {
+            float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
             // Apply an overall drag ("friction")
             velocity *= 0.9f;
 
+            // Store current state before making any modifications
+            Vector3 positionCur = position;
+            Vector3 velocityCur = velocity;
+            Vector3 accelerationCur = acceleration;
 
-            // Handle acceleration (apply acceleration to velocity)
-            // acceleration = change in velocity over a set period of time (a = dv/dt)
-            // dv = a * dt
-            // new velocity = old velocity + dv = old velocity + acceleration * time passed
-            velocity += acceleration * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            // Explicit Euler
+            position += velocity * dt; // velocity not yet changed, so this is velocity n, not velocity n + 1
+            velocity += accelerationPrev * dt; // Use AccelerationPrev (n) since acceleration has already been updated this frame (n+1)
 
-            // Handle velocity (apply velocity to position)
-            // velocity = change in position over a set period of time (v = dp/dt)
-            // dp = v * dt
-            // new position = old positoin + dp = old position + velocity * time passed
-            position += velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            // Implicit Euler
+            //velocity += acceleration * dt; // updated acceleration is being used (n+1)
+            //position += velocity * dt; // updated velocity (n+1) from line above
+
+            // Semi-implicit Euler
+            //velocity += accelerationPrev * dt; // Use AccelerationPrev (n) since acceleration has already been updated this frame (n+1) 
+            //position += velocity * dt; // updated velocity (n+1) from line above
+
+            // Velocity Verlet
+            //Vector3 midVelocity = velocity + accelerationPrev * dt / 2.0f; // Use AccelerationPrev (n) since acceleration has already been updated this frame (n+1) 
+            //position += midVelocity * dt; // uses velocity (n + 1/2) from line above
+            //velocity = midVelocity + acceleration * dt / 2.0f; // Use current acceleration after mods (n+1)
+
+            // Store current state as previous state
+            positionPrev = positionCur;
+            velocityPrev = velocityCur;
+            accelerationPrev = accelerationCur;
         }
 
         public BoundingSphere GetBoundingSphere()
